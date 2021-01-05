@@ -5,7 +5,9 @@ const newTodo = require('../mock-data/new-todo.json');
 
 const endpointUrl = '/todos/';
 
-let firstTodo;
+let firstTodo, newTodoId;
+const notExistingTodoId = '5ff43f0b8e2ab16151ede7ad';
+const testData = { title: 'Make integration test for PUT', done: true };
 
 describe(endpointUrl, () => {
     test(`GET ${endpointUrl}`, async () => {
@@ -26,7 +28,7 @@ describe(endpointUrl, () => {
     });
 
     test('GET todo by id when id does not exists', async () => {
-        const response = await request(app).get(endpointUrl + "5ff43f0b8e2ab16151ede7ad");
+        const response = await request(app).get(`${endpointUrl}${notExistingTodoId}`);
         expect(response.statusCode).toBe(404);
     });
 
@@ -34,18 +36,51 @@ describe(endpointUrl, () => {
         const response = await request(app)
             .post(endpointUrl)
             .send(newTodo)
-            expect(response.statusCode).toBe(201);
-            expect(response.body.title).toBe(newTodo.title);
-            expect(response.body.done).toBe(newTodo.done);
+        expect(response.statusCode).toBe(201);
+        expect(response.body.title).toBe(newTodo.title);
+        expect(response.body.done).toBe(newTodo.done);
+        newTodoId = response.body._id;
     });
 
     it(`should return error 500 on malformed data with POST ${endpointUrl}`, async () => {
         const response = await request(app)
             .post(endpointUrl)
             .send({ title: 'Missing done property' });
-            expect(response.statusCode).toBe(500);
-            expect(response.body).toStrictEqual({
-                message: "Todo validation failed: done: Path `done` is required."
-            });
+        expect(response.statusCode).toBe(500);
+        expect(response.body).toStrictEqual({
+            message: "Todo validation failed: done: Path `done` is required."
+        });
+    });
+
+    it(`PUT ${endpointUrl}`, async () => {
+        const res = await request(app)
+            .put(`${endpointUrl}${newTodoId}`)
+            .send(testData);
+        expect(res.statusCode).toBe(200);
+        expect(res.body.title).toBe(testData.title);
+        expect(res.body.done).toBe(testData.done);
+    });
+
+    it('should return 404 on PUT', async () => {
+        const res = await request(app)
+            .put(`${endpointUrl}${notExistingTodoId}`)
+            .send(testData);
+        expect(res.statusCode).toBe(404);
+    });
+
+    test('HTTP DELETE', async () => {
+        const res = await request(app)
+            .delete(`${endpointUrl}${newTodoId}`)
+            .send();
+        expect(res.statusCode).toBe(200);
+        expect(res.body.title).toBe(testData.title);
+        expect(res.body.done).toBe(testData.done);
+    });
+
+    test('HTTP DELETE 404', async () => {
+        const res = await request(app)
+            .delete(`${endpointUrl}${notExistingTodoId}`)
+            .send();
+        expect(res.statusCode).toBe(404);
     });
 });
